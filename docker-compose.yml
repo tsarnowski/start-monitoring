@@ -1,0 +1,56 @@
+# docker-compose.yml
+version: '3'
+services:
+    prometheus:
+        container_name: prometheus
+        image: prom/prometheus:v2.39.1
+        volumes:
+            - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+            - prometheus_data:/prometheus
+        command:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - '--web.console.libraries=/etc/prometheus/console_libraries'
+            - '--web.console.templates=/etc/prometheus/consoles'
+            - '--storage.tsdb.retention.time=1y'
+            - '--web.enable-lifecycle'
+        ports:
+            - "9090:9090"
+        restart: unless-stopped
+        extra_hosts:       
+            - "host.docker.internal:host-gateway"
+    node-exporter:
+        container_name: node-exporter
+        image: prom/node-exporter:v1.5.0
+        restart: unless-stopped
+        network_mode: host
+    grafana:
+        container_name: grafana
+        image: grafana/grafana:9.2.15
+        environment:
+            - GF_SECURITY_ADMIN_PASSWORD=password
+            - GF_AUTH_ANONYMOUS_ENABLED=true
+            - GF_AUTH_DISABLE_LOGIN_FORM=false
+            - GF_ORG_NAME=Main Org.
+            - GF_ORG_ROLE=viewer
+        volumes:
+            - grafana_data:/var/lib/grafana
+            - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+            - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+        depends_on:
+            - prometheus
+        ports:
+            - "3000:3000"
+        restart: unless-stopped
+    alertmanager:
+        container_name: alertmanager
+        image: prom/alertmanager:v0.24.0
+        volumes:
+            - ./alertmanager/alertmanager.yml:/alertmanager.yml
+        command:
+            - '--config.file=/alertmanager.yml'
+        ports:
+            - "9093:9093"
+        restart: unless-stopped
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
